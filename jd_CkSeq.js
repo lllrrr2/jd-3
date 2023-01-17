@@ -13,13 +13,43 @@ if ($.isNode()) {
         cookiesArr.push(jdCookieNode[item])
     })
 }
+let WP_APP_TOKEN_ONE = "";
+if ($.isNode()) {
+	if (process.env.WP_APP_TOKEN_ONE) {		
+		WP_APP_TOKEN_ONE = process.env.WP_APP_TOKEN_ONE;
+	}	
+}
 
 let arrCkPtPin = [];
 let arrEnvPtPin = [];
 let arrEnvStatus = [];
+let arrEnvOnebyOne = [];
 let strCk = "";
 let strNoFoundCk = "";
 let strMessage = "";
+let strNotify = "";
+if ($.isNode() && process.env.SEQCK_DisableCKNOTIFY) {	
+	strNotify=process.env.SEQCK_DisableCKNOTIFY;
+	console.log(`检测到设定了公告,禁用的CK将推送信息...`);
+	strNotify = `【✨✨✨✨公告✨✨✨✨】\n`+strNotify;
+	console.log(strNotify+"\n");	
+}else{
+	WP_APP_TOKEN_ONE = "";
+}
+
+const fs = require('fs');
+let TempCKUid = [];
+let strUidFile = '/ql/scripts/CK_WxPusherUid.json';
+let UidFileexists = fs.existsSync(strUidFile);
+if (UidFileexists) {
+    console.log("检测到一对一Uid文件WxPusherUid.json，载入...");
+    TempCKUid = fs.readFileSync(strUidFile, 'utf-8');
+    if (TempCKUid) {
+        TempCKUid = TempCKUid.toString();
+        TempCKUid = JSON.parse(TempCKUid);
+    }
+}
+
 !(async() => {
 
     const envs = await getEnvs();
@@ -28,7 +58,8 @@ let strMessage = "";
             var tempptpin = decodeURIComponent(envs[i].value.match(/pt_pin=([^; ]+)(?=;?)/) && envs[i].value.match(/pt_pin=([^; ]+)(?=;?)/)[1]);
             arrEnvPtPin.push(tempptpin);
             arrEnvStatus.push(envs[i].status);
-
+			var struuid=getuuid(envs[i].remarks,tempptpin)
+			arrEnvOnebyOne.push(struuid);
         }
     }
 
@@ -37,10 +68,13 @@ let strMessage = "";
             cookie = cookiesArr[i];
             var tempptpin = decodeURIComponent(cookie.match(/pt_pin=([^; ]+)(?=;?)/) && cookie.match(/pt_pin=([^; ]+)(?=;?)/)[1]);
             var intSeq = inArray(tempptpin, arrEnvPtPin);
-            if (intSeq != -1) {
-                intSeq += 1;
+            if (intSeq != -1) {                
                 arrCkPtPin.push(tempptpin);
-                strCk += "【"+intSeq + "】" + tempptpin + "\n";
+                strCk += "【"+(intSeq+1) + "】" + tempptpin ;
+				if (arrEnvOnebyOne[intSeq]) {
+					strCk += "(已启用一对一推送)"
+				}
+				strCk +="\n";
             }
         }
     }
@@ -49,11 +83,18 @@ let strMessage = "";
         var tempptpin = arrEnvPtPin[i];
         var intSeq = inArray(tempptpin, arrCkPtPin);
         if (intSeq == -1) {
-            strNoFoundCk += "【"+(i + 1) + "】" + tempptpin;
+            strNoFoundCk += "【" + (i + 1) + "】" + tempptpin;
             if (arrEnvStatus[i] == 1) {
-                strNoFoundCk += "(状态已禁用)"
+                strNoFoundCk += "(已禁用)"
+                if ($.isNode() && WP_APP_TOKEN_ONE) {
+                    await notify.sendNotifybyWxPucher("账号下线通知", strNotify, tempptpin);
+					await $.wait(1000);
+                }
             }
-			 strNoFoundCk +="\n";
+            if (arrEnvOnebyOne[i]) {
+                strNoFoundCk += "(已启用一对一推送)"
+            }
+            strNoFoundCk += "\n";
 
         }
     }
@@ -76,12 +117,44 @@ let strMessage = "";
 
 function inArray(search, array) {
     var lnSeq = -1;
-    for (var i in array) {
+    for (let i = 0; i < array.length; i++) {
         if (array[i] == search) {
             lnSeq = i;
         }
     }
     return parseInt(lnSeq);
+}
+
+
+function getuuid(strRemark, PtPin) {
+    var strTempuuid = "";
+    if (strRemark) {
+        var Tempindex = strRemark.indexOf("@@");
+        if (Tempindex != -1) {
+            //console.log(PtPin + ": 检测到NVJDC的一对一格式,瑞思拜~!");
+            var TempRemarkList = strRemark.split("@@");
+            for (let j = 1; j < TempRemarkList.length; j++) {
+                if (TempRemarkList[j]) {
+                    if (TempRemarkList[j].length > 4) {
+                        if (TempRemarkList[j].substring(0, 4) == "UID_") {
+                            strTempuuid = TempRemarkList[j];
+                            break;
+                        }
+                    }
+                }
+            }            
+        }
+    }
+    if (!strTempuuid && TempCKUid) {
+        //console.log("正在从CK_WxPusherUid文件中检索资料...");
+        for (let j = 0; j < TempCKUid.length; j++) {
+            if (PtPin == decodeURIComponent(TempCKUid[j].pt_pin)) {
+                strTempuuid = TempCKUid[j].Uid;
+                break;
+            }
+        }
+    }
+    return strTempuuid;
 }
 
 // prettier-ignore

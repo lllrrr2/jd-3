@@ -19,7 +19,7 @@ $.inviteCodeList = [];
 $.inviteCodeList_hb = [];
 let flag_hb = true
 let cookiesArr = [];
-$.appId = 10028;
+$.appId = "00df8";
 $.helpCkList = [];
 if ($.isNode()) {
   Object.keys(jdCookieNode).forEach((item) => {
@@ -46,7 +46,7 @@ let token ='';
     $.isLogin = true;
     $.nickName = '';
     $.UserName = decodeURIComponent($.cookie.match(/pt_pin=([^; ]+)(?=;?)/) && $.cookie.match(/pt_pin=([^; ]+)(?=;?)/)[1]);
-    await TotalBean();
+    //await TotalBean();
     console.log(`\n*****开始【京东账号${$.index}】${$.nickName || $.UserName}*****\n`);
     if (!$.isLogin) {
       $.msg($.name, `【提示】cookie已失效`, `京东账号${$.index} ${$.nickName || $.UserName}\n请重新登录获取\nhttps://bean.m.jd.com/bean/signIndex.action`, {"open-url": "https://bean.m.jd.com/bean/signIndex.action"});
@@ -82,7 +82,7 @@ let token ='';
   }
   console.log('\n##################开始账号内互助#################\n');
   $.shareCode = undefined
-  await getShareCode('jxmc.json')
+  await getShareCode('11111127')
   let newCookiesArr = [];
   for(let i = 0;i<$.helpCkList.length;i+=4){
     newCookiesArr.push($.helpCkList.slice(i,i+4))
